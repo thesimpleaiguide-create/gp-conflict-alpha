@@ -292,8 +292,7 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
 {"score": 85, "feedback": "Your detailed clinical feedback here."}`;
 
             try {
-                // Using standard gemini-1.5-flash via v1beta endpoint
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeApiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${activeApiKey}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
