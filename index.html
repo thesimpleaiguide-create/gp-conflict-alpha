@@ -26,6 +26,12 @@
   <header class="mb-6 border-b border-slate-700 pb-4">
     <h1 class="text-2xl md:text-3xl font-bold text-white">Scenario 1: The Missing Referral</h1>
     <p class="text-slate-400 mt-2 text-sm md:text-base">Speak directly to the patient using the P.I.P.A.V. de-escalation framework.</p>
+    
+    <!-- Alpha Feature: Secure API Key Input -->
+    <div class="mt-4 p-3 bg-slate-900 rounded border border-slate-700 flex items-center gap-3">
+      <span class="text-xs text-slate-400">Alpha Setup:</span>
+      <input type="password" id="apiKeyInput" placeholder=AIzaSyCnn2IzagcVKaYvJAJMPoWlzUSkK2OtA5Y class="flex-1 bg-slate-800 text-white text-sm px-3 py-1 rounded border border-slate-600 focus:outline-none focus:border-blue-500">
+    </div>
   </header>
 
   <div class="video-wrapper shadow-lg mb-6 border border-slate-700">
@@ -100,104 +106,107 @@
     submitBtn.classList.toggle('cursor-not-allowed', submitBtn.disabled);
   });
 
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-GB';
-
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        finalTranscript += event.results[i][0].transcript;
-      }
-      transcriptInput.value = finalTranscript;
-      submitBtn.disabled = false;
-      submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error', event.error);
-      stopRecording();
-    };
-  } else {
-    alert("Voice recognition isn't supported in this browser. You can type your response instead.");
-  }
-
-  micBtn.addEventListener('click', () => {
-    if (!isRecording) {
-      startRecording();
-    } else {
-      stopRecording();
+  submitBtn.addEventListener('click', async () => {
+    const speech = transcriptInput.value.trim();
+    const apiKey = document.getElementById('apiKeyInput').value.trim();
+    
+    if (!apiKey) {
+      alert("Please paste your Google Gemini API Key at the top for the Alpha test.");
+      return;
     }
-  });
 
-  function startRecording() {
-    if (recognition) {
-      transcriptInput.value = '';
-      recognition.start();
-      isRecording = true;
-      micBtn.classList.add('recording-pulse');
-      micText.textContent = 'Stop Recording...';
-    }
-  }
-
-  function stopRecording() {
-    if (recognition && isRecording) {
-      recognition.stop();
-      isRecording = false;
-      micBtn.classList.remove('recording-pulse');
-      micText.textContent = 'Press & Speak Response';
-    }
-  }
-
-  submitBtn.addEventListener('click', () => {
-    const speech = transcriptInput.value.toLowerCase();
+    if (!speech) return;
     
     // UI Loading state
     submitBtn.textContent = 'Evaluating AI Response...';
     submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
     
-    // Simulate API delay (1.5 seconds)
-    setTimeout(() => {
-      evaluateResponse(speech);
-      submitBtn.textContent = 'Response Evaluated';
-    }, 1500);
+    // Call the real LLM API
+    await evaluateResponseLLM(speech, apiKey);
   });
 
-  function evaluateResponse(text) {
-    // Basic Keyword matching to simulate LLM grading for the Alpha
-    const hasValidation = text.includes('sorry') || text.includes('understand') || text.includes('worry');
-    const hasBoundary = text.includes('screen') || text.includes('cannot') || text.includes('policy');
-    const hasSolution = text.includes('room') || text.includes('private') || text.includes('manager');
+  async function evaluateResponseLLM(userSpeech, apiKey) {
+    const systemPrompt = `
+      You are an expert assessor in NHS primary care de-escalation. Evaluate the student's spoken response to an angry patient demanding to see a computer screen regarding a missing cancer referral.
+      
+      Evaluate against two core frameworks out of 50 points each:
+      
+      Framework 1: Clinical De-escalation (50 Points)
+      - Validation: Acknowledging distress/fear (cancer worry).
+      - Procedure: Adherence to NHS screen privacy (refusing screen view firmly but politely).
+      - Prevention/Environment: Offering to move to a private/side room.
+      
+      Framework 2: Simulated Vocal/Tone P.I.P.A.V. (50 Points)
+      - Assess the text for tone, phrasing, and pacing. 
+      - High points for calm, steady, empathetic phrasing.
+      - Low points for defensive, short, abrupt, or overly apologetic/flustered phrasing.
+      
+      Calculate total_score out of 100.
+      
+      Based on total_score, determine branch_id:
+      - Score 80-100: 3 (Successful de-escalation)
+      - Score 50-79: 2 (Grudging compliance)
+      - Score 0-49: 1 (Escalation)
+      
+      Return ONLY valid JSON in this format:
+      {
+        "total_score": number,
+        "branch_id": number,
+        "clinical_feedback": "string explaining score",
+        "vocal_feedback": "string explaining tone analysis"
+      }
+    `;
 
-    let score = 30; // base score
-    if (hasValidation) score += 25;
-    if (hasBoundary) score += 20;
-    if (hasSolution) score += 20;
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          contents: [
+            { parts: [{ text: userSpeech }] }
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            responseMimeType: "application/json"
+          }
+        })
+      });
 
-    // Route to appropriate video branch
-    if (score >= 80) {
-      // Branch 3: Success
-      video.src = videos.branch3;
-      document.getElementById('clinicalFeedback').innerHTML = "✅ <strong>Excellent.</strong> You validated his fear regarding the scan, maintained screen privacy, and offered a private space.";
-      document.getElementById('vocalFeedback').innerHTML = "✅ <strong>Pace:</strong> 128 WPM (Controlled).<br>✅ <strong>Volume:</strong> Moderate.<br><em>Tip: Ensure downward inflection on boundaries.</em>";
-    } else if (score >= 50) {
-      // Branch 2: Grudging
-      video.src = videos.branch2;
-      document.getElementById('clinicalFeedback').innerHTML = "⚠️ <strong>Partial Success.</strong> You set the boundary but missed validating his fear or moving him to a side room.";
-      document.getElementById('vocalFeedback').innerHTML = "⚠️ <strong>Pace:</strong> Slightly rushed.<br><em>Tip: Slow down to force the patient to mirror your tempo.</em>";
-    } else {
-      // Branch 1: Escalation
-      video.src = videos.branch1;
-      document.getElementById('clinicalFeedback').innerHTML = "❌ <strong>Escalation.</strong> You were dismissive or defensive. The patient feels ignored.";
-      document.getElementById('vocalFeedback').innerHTML = "❌ <strong>Pitch:</strong> High/Defensive.<br><em>Tip: Lower your pitch to project authority and calm.</em>";
+      if (!response.ok) throw new Error("API Error: " + response.statusText);
+
+      const data = await response.json();
+      const rawContent = data.candidates[0].content.parts[0].text;
+      const result = JSON.parse(rawContent);
+
+      // Update UI with real AI feedback
+      document.getElementById('scoreBadge').textContent = `Score: ${result.total_score}%`;
+      document.getElementById('clinicalFeedback').innerHTML = result.clinical_feedback;
+      document.getElementById('vocalFeedback').innerHTML = result.vocal_feedback;
+
+      // Trigger correct video branch
+      if (result.branch_id === 3) {
+        video.src = videos.branch3;
+      } else if (result.branch_id === 2) {
+        video.src = videos.branch2;
+      } else {
+        video.src = videos.branch1;
+      }
+
+      feedbackPanel.classList.remove('hidden');
+      video.play();
+
+    } catch (error) {
+      console.error(error);
+      alert("Error connecting to AI. Check your API key and network.");
+    } finally {
+      submitBtn.textContent = 'Response Evaluated';
     }
-
-    document.getElementById('scoreBadge').textContent = `Score: ${score}%`;
-    feedbackPanel.classList.remove('hidden');
-    video.play();
   }
 
   resetBtn.addEventListener('click', () => {
