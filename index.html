@@ -1,90 +1,262 @@
-<!-- ... existing code ... -->
-  </header>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TTN GP Conflict Management Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom styles for animations and specific overrides */
+    .recording-pulse {
+      animation: pulse-red 1.5s infinite;
+      background-color: #ef4444 !important; /* Tailwind red-500 */
+      color: white !important;
+    }
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans flex justify-center items-start">
 
-  <div class="video-wrapper shadow-lg mb-6 border border-slate-700">
-    <video id="scenarioVideo" controls autoplay playsinline>
-      <source src="alpha-prompt.mp4" type="video/mp4">
-      Your browser does not support HTML video.
-    </video>
+  <div class="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-700">
+    
+    <header class="bg-slate-950 p-6 border-b border-slate-700">
+      <h1 class="text-2xl md:text-3xl font-bold text-blue-400">Scenario 1: The Missing Referral</h1>
+      <p class="text-slate-400 mt-2">Speak directly to the patient using the P.I.P.A.V. de-escalation framework.</p>
+      
+      <div class="mt-4 flex items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+        <label for="apiKeyInput" class="text-sm font-semibold text-slate-300 mr-3 whitespace-nowrap">Alpha Setup:</label>
+        <input type="password" id="apiKeyInput" placeholder="Paste Google Gemini API Key here (AIza...)" 
+               class="w-full bg-slate-800 text-slate-200 text-sm px-3 py-2 rounded border border-slate-600 focus:outline-none focus:border-blue-500">
+      </div>
+    </header>
+
+    <div class="p-6">
+      <div class="relative rounded-lg overflow-hidden bg-black aspect-video shadow-lg mb-6 border border-slate-700">
+        <video id="scenarioVideo" class="w-full h-full object-cover" controls playsinline>
+          <source src="alpha-prompt.mp4" type="video/mp4">
+          Your browser does not support HTML video.
+        </video>
+      </div>
+
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button id="micBtn" class="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+            <span id="micText">Press & Speak Response</span>
+          </button>
+          
+          <button id="submitBtn" disabled class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
+            Submit Response
+          </button>
+        </div>
+
+        <textarea id="transcriptInput" rows="4" placeholder="Your spoken text will appear here... (Or you can type it manually)."
+                  class="w-full bg-slate-900 text-slate-200 p-4 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+      </div>
+
+      <div id="feedbackPanel" class="hidden mt-6 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+        <div class="bg-slate-950 p-4 border-b border-slate-700 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-white">Evaluation Results</h3>
+          <span id="totalScoreBadge" class="px-3 py-1 rounded-full bg-blue-900 text-blue-300 font-bold text-sm">Score: --%</span>
+        </div>
+        <div class="p-4 space-y-4 text-sm">
+          <div>
+            <h4 class="text-blue-400 font-semibold mb-1 border-b border-slate-700 pb-1">Clinical Strategy</h4>
+            <p id="clinicalFeedback" class="text-slate-300"></p>
+          </div>
+          <div>
+            <h4 class="text-emerald-400 font-semibold mb-1 border-b border-slate-700 pb-1">Vocal P.I.P.A.V. Performance</h4>
+            <p id="vocalFeedback" class="text-slate-300"></p>
+          </div>
+          <button id="resetBtn" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded transition-colors">
+            Try Scenario Again
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="space-y-4">
-<!-- ... existing code ... -->
-```
+  <script>
+    const scenarioVideo = document.getElementById('scenarioVideo');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const micBtn = document.getElementById('micBtn');
+    const micText = document.getElementById('micText');
+    const submitBtn = document.getElementById('submitBtn');
+    const transcriptInput = document.getElementById('transcriptInput');
+    const feedbackPanel = document.getElementById('feedbackPanel');
+    const clinicalFeedback = document.getElementById('clinicalFeedback');
+    const vocalFeedback = document.getElementById('vocalFeedback');
+    const totalScoreBadge = document.getElementById('totalScoreBadge');
+    const resetBtn = document.getElementById('resetBtn');
 
-```javascript:GP Conflict Simulator Alpha:index.html
-<!-- ... existing code ... -->
-  const feedbackPanel = document.getElementById('feedbackPanel');
-  const resetBtn = document.getElementById('resetBtn');
+    let recognition;
+    let isRecording = false;
 
-  let recognition;
-  let isRecording = false;
+    // The actual video files matching the branches you named
+    const videos = {
+      prompt: 'alpha-prompt.mp4',
+      branch1: 'branch 1.mp4',
+      branch2: 'branch 2.mp4',
+      branch3: 'branch 3.mp4'
+    };
 
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
 
-    recognition.onresult = (event) => {
-      let currentTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        currentTranscript += event.results[i][0].transcript;
+      recognition.onresult = (event) => {
+        let currentTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          currentTranscript += event.results[i][0].transcript;
+        }
+        transcriptInput.value = currentTranscript;
+        checkInputState();
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        stopRecording();
+      };
+    } else {
+      console.warn("Speech recognition not supported in this browser.");
+    }
+
+    transcriptInput.addEventListener('input', checkInputState);
+
+    function checkInputState() {
+      if (transcriptInput.value.trim().length > 0) {
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.disabled = true;
       }
-      transcriptInput.value = currentTranscript;
+    }
+
+    micBtn.addEventListener('click', () => {
+      if (!isRecording) {
+        startRecording();
+      } else {
+        stopRecording();
+      }
+    });
+
+    function startRecording() {
+      if (recognition) {
+        try {
+          recognition.start();
+          isRecording = true;
+          micText.textContent = 'Stop Recording...';
+          micBtn.classList.add('recording-pulse');
+        } catch(e) {
+          console.error("Recognition already started or failed.", e);
+        }
+      } else {
+        alert('Microphone not supported in this browser. Please type your response.');
+      }
+    }
+
+    function stopRecording() {
+      if (recognition && isRecording) {
+        recognition.stop();
+        isRecording = false;
+        micText.textContent = 'Press & Speak Response';
+        micBtn.classList.remove('recording-pulse');
+        checkInputState();
+      }
+    }
+
+    resetBtn.addEventListener('click', () => {
+      scenarioVideo.src = videos.prompt;
+      transcriptInput.value = '';
+      feedbackPanel.classList.add('hidden');
+      submitBtn.disabled = true;
+      scenarioVideo.play();
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      stopRecording();
       
-      // Trigger the input event to enable the submit button automatically
-      transcriptInput.dispatchEvent(new Event('input'));
-    };
+      const speech = transcriptInput.value.trim();
+      const apiKey = apiKeyInput.value.trim();
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      stopRecording();
-    };
-  }
-
-  micBtn.addEventListener('click', () => {
-    if (!isRecording) {
-      startRecording();
-    } else {
-      stopRecording();
-    }
-  });
-
-  function startRecording() {
-    if (recognition) {
-      try {
-        recognition.start();
-        isRecording = true;
-        micText.textContent = 'Stop Recording...';
-        micBtn.classList.add('recording-pulse');
-      } catch(e) {
-        console.error(e);
+      if (!apiKey || !apiKey.startsWith('AIza')) {
+        alert("Please paste a valid Google Gemini API key (starts with AIza) at the top of the page.");
+        return;
       }
-    } else {
-      alert('Microphone not supported in this browser. Please type your response.');
-    }
-  }
 
-  function stopRecording() {
-    if (recognition && isRecording) {
-      recognition.stop();
-      isRecording = false;
-      micText.textContent = 'Press & Speak Response';
-      micBtn.classList.remove('recording-pulse');
-    }
-  }
+      if (!speech) return;
 
-  const videos = {
-    prompt: 'alpha-prompt.mp4',
-<!-- ... existing code ... -->
-```
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'AI is Evaluating...';
+      transcriptInput.disabled = true;
 
-### How to test it now:
-1. Save the file and refresh the page.
-2. Hover over the video—you will now see the Play button. **Click Play** to watch the scenario.
-3. Click the blue **Press & Speak Response** button. Your browser should ask "Allow microphone access?". Click Allow.
-4. Speak your response. You should see your words typing out in the bottom box. (Once text appears, the green Submit button will light up).
-5. Click the blue button again to stop recording, then hit **Submit Response**.
+      const systemPrompt = `You are an expert assessor in NHS primary care de-escalation. Evaluate the following spoken transcript of a receptionist responding to an angry patient demanding to see their computer screen regarding a missing scan referral. 
+      Evaluate out of 100 total points based on:
+      1. Clinical Strategy (50 points): Validating fear, enforcing screen privacy without dismissing, moving to a side room.
+      2. Vocal P.I.P.A.V (50 points): Based on the transcript phrasing, estimate pace, calmness, and lack of defensive/aggressive words.
 
-Give that a go and let me know if it branches correctly!
+      Branching Rules:
+      Score 80-100 = Branch 3 (De-escalation)
+      Score 40-79 = Branch 2 (Grudging Compliance)
+      Score 0-39 = Branch 1 (Escalation)
+
+      Return ONLY a JSON object matching this schema exactly:
+      {
+        "total_score": 85,
+        "branch_id": 3,
+        "clinical_feedback": "Short feedback text",
+        "vocal_feedback": "Short feedback text"
+      }`;
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: `${systemPrompt}\n\nStudent Transcript: "${speech}"` }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+
+        if (!response.ok) throw new Error("API Request Failed");
+
+        const data = await response.json();
+        const jsonString = data.candidates[0].content.parts[0].text;
+        const result = JSON.parse(jsonString);
+
+        // Display results
+        totalScoreBadge.textContent = `Score: ${result.total_score}%`;
+        clinicalFeedback.textContent = result.clinical_feedback;
+        vocalFeedback.textContent = result.vocal_feedback;
+        feedbackPanel.classList.remove('hidden');
+
+        // Play the correct branch video
+        if (result.branch_id === 3) {
+          scenarioVideo.src = videos.branch3;
+        } else if (result.branch_id === 2) {
+          scenarioVideo.src = videos.branch2;
+        } else {
+          scenarioVideo.src = videos.branch1;
+        }
+        
+        scenarioVideo.play();
+
+      } catch (error) {
+        console.error(error);
+        alert("There was an error communicating with the AI. Check your API key and try again.");
+      } finally {
+        submitBtn.textContent = 'Submit Response';
+        transcriptInput.disabled = false;
+        checkInputState();
+      }
+    });
+  </script>
+</body>
+</html>
