@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NHS GP Conflict Simulator - Alpha</title>
+  <!-- Tailwind for rapid, clean styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: #0f172a; color: #f8fafc; }
+    .nhs-blue { background-color: #005eb8; }
+    .nhs-blue-text { color: #005eb8; }
+    .nhs-green { background-color: #007f3b; }
+    .recording-pulse { animation: pulse 1.5s infinite; background-color: #ef4444; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+    
+    /* Ensure the video container remains responsive */
+    .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000; border-radius: 0.5rem; }
+    .video-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+<div class="max-w-3xl w-full bg-slate-800 rounded-xl shadow-2xl p-6 md:p-8">
+  
+  <header class="mb-6 border-b border-slate-700 pb-4">
+    <h1 class="text-2xl md:text-3xl font-bold text-white">Scenario 1: The Missing Referral</h1>
+    <p class="text-slate-400 mt-2 text-sm md:text-base">Speak directly to the patient using the P.I.P.A.V. de-escalation framework.</p>
+  </header>
+
+  <div class="video-wrapper shadow-lg mb-6 border border-slate-700">
+    <video id="scenarioVideo" autoplay playsinline>
+      <source src="alpha-prompt.mp4" type="video/mp4">
+      Your browser does not support HTML video.
+    </video>
+  </div>
+
+  <div class="space-y-4">
+    <div class="flex flex-col sm:flex-row gap-3">
+      <button id="micBtn" class="flex-1 nhs-blue hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd" />
+        </svg>
+        <span id="micText">Press & Speak Response</span>
+      </button>
+      
+      <button id="submitBtn" class="flex-1 nhs-green hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors opacity-50 cursor-not-allowed" disabled>
+        Submit Response
+      </button>
+    </div>
+
+    <textarea id="transcriptText" rows="3" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors" placeholder="Your spoken text will appear here... (Or you can type it manually)."></textarea>
+  </div>
+
+  <div id="feedbackPanel" class="hidden mt-6 p-5 bg-slate-700 rounded-lg border-l-4 border-blue-500 shadow-inner">
+    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+      <span id="scoreBadge" class="bg-blue-900 text-blue-200 py-1 px-3 rounded-full text-sm">Score: --%</span>
+      Evaluation Complete
+    </h3>
+    
+    <div class="space-y-3 text-sm text-slate-200">
+      <div class="bg-slate-800 p-3 rounded">
+        <strong class="text-white block mb-1">Clinical Strategy:</strong>
+        <p id="clinicalFeedback">...</p>
+      </div>
+      <div class="bg-slate-800 p-3 rounded">
+        <strong class="text-white block mb-1">Vocal P.I.P.A.V. Delivery:</strong>
+        <p id="vocalFeedback">...</p>
+      </div>
+    </div>
+    
+    <button id="resetBtn" class="mt-4 text-sm text-blue-400 hover:text-blue-300 underline">Try Scenario Again</button>
+  </div>
+
+</div>
+
+<script>
+  const video = document.getElementById('scenarioVideo');
+  const micBtn = document.getElementById('micBtn');
+  const micText = document.getElementById('micText');
+  const submitBtn = document.getElementById('submitBtn');
+  const transcriptInput = document.getElementById('transcriptText');
+  const feedbackPanel = document.getElementById('feedbackPanel');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let recognition;
+  let isRecording = false;
+
+  const videos = {
+    prompt: 'alpha-prompt.mp4',
+    branch1: 'branch 1.mp4', 
+    branch2: 'branch 2.mp4',
+    branch3: 'branch 3.mp4'
+  };
+
+  // Enable Submit button when text is entered manually
+  transcriptInput.addEventListener('input', () => {
+    submitBtn.disabled = transcriptInput.value.trim().length === 0;
+    submitBtn.classList.toggle('opacity-50', submitBtn.disabled);
+    submitBtn.classList.toggle('cursor-not-allowed', submitBtn.disabled);
+  });
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-GB';
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        finalTranscript += event.results[i][0].transcript;
+      }
+      transcriptInput.value = finalTranscript;
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      stopRecording();
+    };
+  } else {
+    alert("Voice recognition isn't supported in this browser. You can type your response instead.");
+  }
+
+  micBtn.addEventListener('click', () => {
+    if (!isRecording) {
+      startRecording();
+    } else {
+      stopRecording();
+    }
+  });
+
+  function startRecording() {
+    if (recognition) {
+      transcriptInput.value = '';
+      recognition.start();
+      isRecording = true;
+      micBtn.classList.add('recording-pulse');
+      micText.textContent = 'Stop Recording...';
+    }
+  }
+
+  function stopRecording() {
+    if (recognition && isRecording) {
+      recognition.stop();
+      isRecording = false;
+      micBtn.classList.remove('recording-pulse');
+      micText.textContent = 'Press & Speak Response';
+    }
+  }
+
+  submitBtn.addEventListener('click', () => {
+    const speech = transcriptInput.value.toLowerCase();
+    
+    // UI Loading state
+    submitBtn.textContent = 'Evaluating AI Response...';
+    submitBtn.disabled = true;
+    
+    // Simulate API delay (1.5 seconds)
+    setTimeout(() => {
+      evaluateResponse(speech);
+      submitBtn.textContent = 'Response Evaluated';
+    }, 1500);
+  });
+
+  function evaluateResponse(text) {
+    // Basic Keyword matching to simulate LLM grading for the Alpha
+    const hasValidation = text.includes('sorry') || text.includes('understand') || text.includes('worry');
+    const hasBoundary = text.includes('screen') || text.includes('cannot') || text.includes('policy');
+    const hasSolution = text.includes('room') || text.includes('private') || text.includes('manager');
+
+    let score = 30; // base score
+    if (hasValidation) score += 25;
+    if (hasBoundary) score += 20;
+    if (hasSolution) score += 20;
+
+    // Route to appropriate video branch
+    if (score >= 80) {
+      // Branch 3: Success
+      video.src = videos.branch3;
+      document.getElementById('clinicalFeedback').innerHTML = "✅ <strong>Excellent.</strong> You validated his fear regarding the scan, maintained screen privacy, and offered a private space.";
+      document.getElementById('vocalFeedback').innerHTML = "✅ <strong>Pace:</strong> 128 WPM (Controlled).<br>✅ <strong>Volume:</strong> Moderate.<br><em>Tip: Ensure downward inflection on boundaries.</em>";
+    } else if (score >= 50) {
+      // Branch 2: Grudging
+      video.src = videos.branch2;
+      document.getElementById('clinicalFeedback').innerHTML = "⚠️ <strong>Partial Success.</strong> You set the boundary but missed validating his fear or moving him to a side room.";
+      document.getElementById('vocalFeedback').innerHTML = "⚠️ <strong>Pace:</strong> Slightly rushed.<br><em>Tip: Slow down to force the patient to mirror your tempo.</em>";
+    } else {
+      // Branch 1: Escalation
+      video.src = videos.branch1;
+      document.getElementById('clinicalFeedback').innerHTML = "❌ <strong>Escalation.</strong> You were dismissive or defensive. The patient feels ignored.";
+      document.getElementById('vocalFeedback').innerHTML = "❌ <strong>Pitch:</strong> High/Defensive.<br><em>Tip: Lower your pitch to project authority and calm.</em>";
+    }
+
+    document.getElementById('scoreBadge').textContent = `Score: ${score}%`;
+    feedbackPanel.classList.remove('hidden');
+    video.play();
+  }
+
+  resetBtn.addEventListener('click', () => {
+    feedbackPanel.classList.add('hidden');
+    transcriptInput.value = '';
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    submitBtn.textContent = 'Submit Response';
+    video.src = videos.prompt;
+    video.play();
+  });
+</script>
+
+</body>
+</html>
