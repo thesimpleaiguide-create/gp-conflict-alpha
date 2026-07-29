@@ -179,84 +179,96 @@
     });
 
     submitBtn.addEventListener('click', async () => {
-      stopRecording();
-      
-      const speech = transcriptInput.value.trim();
-      const apiKey = apiKeyInput.value.trim();
+    const text = transcriptText.value.trim();
+    const apiKey = apiKeyInput.value.trim();
 
-      if (!apiKey || !apiKey.startsWith('AIza')) {
-        alert("Please paste a valid Google Gemini API key (starts with AIza) at the top of the page.");
-        return;
-      }
+    if (!text) {
+      alert('Please speak or type a response first.');
+      return;
+    }
 
-      if (!speech) return;
+    if (!apiKey) {
+      alert('Please enter your Gemini API Key first.');
+      return;
+    }
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'AI is Evaluating...';
-      transcriptInput.disabled = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Evaluating Response...';
 
-      const systemPrompt = `You are an expert assessor in NHS primary care de-escalation. Evaluate the following spoken transcript of a receptionist responding to an angry patient demanding to see their computer screen regarding a missing scan referral. 
-      Evaluate out of 100 total points based on:
-      1. Clinical Strategy (50 points): Validating fear, enforcing screen privacy without dismissing, moving to a side room.
-      2. Vocal P.I.P.A.V (50 points): Based on the transcript phrasing, estimate pace, calmness, and lack of defensive/aggressive words.
+    const systemPrompt = `You are an expert assessor in NHS primary care de-escalation and communication. Evaluate the student's spoken response to an angry patient demanding to see a computer screen regarding a missing referral.
+    
+    Evaluate against two core frameworks:
+    
+    Framework 1: Clinical De-escalation (50 Points Total)
+    *   Prevention & Assessment: Calm setting, non-confrontational tone.
+    *   Intervention: Clear boundaries set without being dismissive.
+    *   Procedure: Adherence to NHS screen privacy and GDPR rules (refusing screen view firmly).
+    *   Validation: Acknowledging distress and fear regarding the missing scan/cancer concern.
+    
+    Framework 2: Vocal P.I.P.A.V. Delivery (50 Points Total)
+    *   Pitch: Low/neutral pitch projecting composure versus high-pitched panic.
+    *   Inflection: Downward, authoritative inflections vs upward "uptalk".
+    *   Pace: Controlled tempo (~120–140 WPM) vs rushed speech.
+    *   Articulation: Clear enunciation without slurring or hesitation.
+    *   Volume: Moderate, calm lead volume vs shouting back.
+    
+    Scoring & Branching Rules:
+    *   Score 85–100: Branch 3 (De-escalates; patient accepts moving to a private room).
+    *   Score 50–84: Branch 2 (Patient stays defensive but complies or demands immediate proof).
+    *   Score 0–49: Branch 1 (Immediate escalation / walking out).
+    
+    Output Format: Return valid JSON only with keys: "clinical_score", "vocal_score", "total_score", "branch_id", "clinical_feedback", "vocal_feedback".`;
 
-      Branching Rules:
-      Score 80-100 = Branch 3 (De-escalation)
-      Score 40-79 = Branch 2 (Grudging Compliance)
-      Score 0-39 = Branch 1 (Escalation)
-
-      Return ONLY a JSON object matching this schema exactly:
-      {
-        "total_score": 85,
-        "branch_id": 3,
-        "clinical_feedback": "Short feedback text",
-        "vocal_feedback": "Short feedback text"
-      }`;
-
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${systemPrompt}\n\nStudent Transcript: "${speech}"` }] }],
-            generationConfig: { responseMimeType: "application/json" }
-          })
-        });
-
-        if (!response.ok) throw new Error("API Request Failed");
-
-        const data = await response.json();
-        const jsonString = data.candidates[0].content.parts[0].text;
-        const result = JSON.parse(jsonString);
-
-        // Display results
-        totalScoreBadge.textContent = `Score: ${result.total_score}%`;
-        clinicalFeedback.textContent = result.clinical_feedback;
-        vocalFeedback.textContent = result.vocal_feedback;
-        feedbackPanel.classList.remove('hidden');
-
-        // Play the correct branch video
-        if (result.branch_id === 3) {
-          scenarioVideo.src = videos.branch3;
-        } else if (result.branch_id === 2) {
-          scenarioVideo.src = videos.branch2;
-        } else {
-          scenarioVideo.src = videos.branch1;
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{
+          parts: [{ text: `${systemPrompt}\n\nStudent Transcript: "${text}"` }]
+        }],
+        generationConfig: {
+          responseMimeType: "application/json"
         }
-        
-        scenarioVideo.play();
+      };
 
-      } catch (error) {
-        console.error(error);
-        alert("There was an error communicating with the AI. Check your API key and try again.");
-      } finally {
-        submitBtn.textContent = 'Submit Response';
-        transcriptInput.disabled = false;
-        checkInputState();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
-    });
-  </script>
+
+      const resultData = await response.json();
+      const rawText = resultData.candidates[0].content.parts[0].text;
+      const result = JSON.parse(rawText);
+
+      document.getElementById('scoreBadge').textContent = `Total Score: ${result.total_score}%`;
+      document.getElementById('clinicalFeedback').textContent = result.clinical_feedback;
+      document.getElementById('vocalFeedback').textContent = result.vocal_feedback;
+      
+      feedbackPanel.style.display = 'block';
+
+      // Video branching logic based on the AI's branch_id choice
+      if (result.branch_id === 3) {
+        scenarioVideo.src = 'branch 3.mp4';
+      } else if (result.branch_id === 2) {
+        scenarioVideo.src = 'branch 2.mp4';
+      } else {
+        scenarioVideo.src = 'branch 1.mp4';
+      }
+      
+      scenarioVideo.play();
+    } catch (error) {
+      console.error("Evaluation error:", error);
+      alert("There was an error communicating with the AI. Check your API key and try again.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit & Evaluate';
+    }
+  });
+</script>
+
 </body>
 </html>
