@@ -6,7 +6,6 @@
   <title>TTN GP Conflict Management Simulator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Custom styles for animations and specific overrides */
     .recording-pulse {
       animation: pulse-red 1.5s infinite;
       background-color: #ef4444 !important; /* Tailwind red-500 */
@@ -17,24 +16,47 @@
       70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans flex justify-center items-start">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex justify-center items-center p-4">
 
-  <div class="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-700">
+  <div id="loginScreen" class="max-w-md w-full bg-slate-800 rounded-xl shadow-2xl p-8 border border-slate-700 fade-in">
+    <div class="text-center mb-6">
+      <h1 class="text-2xl font-bold text-blue-400 mb-2">TTN Simulator Alpha</h1>
+      <p class="text-slate-400 text-sm">Please authenticate to access the conflict management scenario.</p>
+    </div>
     
-    <header class="bg-slate-950 p-6 border-b border-slate-700">
-      <h1 class="text-2xl md:text-3xl font-bold text-blue-400">Scenario 1: The Missing Referral</h1>
-      <p class="text-slate-400 mt-2">Speak directly to the patient using the P.I.P.A.V. de-escalation framework.</p>
-      
-      <div class="mt-4 flex items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
-        <label for="apiKeyInput" class="text-sm font-semibold text-slate-300 mr-3 whitespace-nowrap">Alpha Setup:</label>
-        <input type="password" id="apiKeyInput" placeholder="Paste Google Gemini API Key here (AIza...)" 
-               class="w-full bg-slate-800 text-slate-200 text-sm px-3 py-2 rounded border border-slate-600 focus:outline-none focus:border-blue-500">
+    <div class="space-y-4">
+      <div>
+        <label for="apiKeyInput" class="block text-sm font-semibold text-slate-300 mb-1">Google Gemini API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="AIzaSy..." 
+               class="w-full bg-slate-900 text-slate-200 px-4 py-3 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
       </div>
+      <button id="startSimBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+        Unlock Simulator
+      </button>
+    </div>
+  </div>
+
+  <div id="simScreen" class="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-700 hidden">
+    
+    <header class="bg-slate-950 p-6 border-b border-slate-700 flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-blue-400">Scenario 1: The Missing Referral</h1>
+        <p class="text-slate-400 mt-2 text-sm">Speak directly to the patient using the P.I.P.A.V. de-escalation framework.</p>
+      </div>
+      <button id="logoutBtn" class="text-slate-500 hover:text-red-400 text-sm font-semibold transition-colors">Lock</button>
     </header>
 
     <div class="p-6">
+      <!-- Video Player -->
       <div class="relative rounded-lg overflow-hidden bg-black aspect-video shadow-lg mb-6 border border-slate-700">
         <video id="scenarioVideo" class="w-full h-full object-cover" controls playsinline>
           <source src="alpha-prompt.mp4" type="video/mp4">
@@ -42,11 +64,11 @@
         </video>
       </div>
 
+      <!-- Controls -->
       <div class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button id="micBtn" class="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-            <span id="micText">Press & Speak Response</span>
+            <span id="micText">🎤 Press & Speak Response</span>
           </button>
           
           <button id="submitBtn" disabled class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200">
@@ -54,11 +76,12 @@
           </button>
         </div>
 
-        <textarea id="transcriptInput" rows="4" placeholder="Your spoken text will appear here... (Or you can type it manually)."
+        <textarea id="transcriptInput" rows="3" placeholder="Your spoken text will appear here... (Or you can type it manually)."
                   class="w-full bg-slate-900 text-slate-200 p-4 rounded-lg border border-slate-700 focus:outline-none focus:border-blue-500 resize-none"></textarea>
       </div>
 
-      <div id="feedbackPanel" class="hidden mt-6 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+      <!-- Feedback Panel (Hidden initially) -->
+      <div id="feedbackPanel" class="hidden mt-6 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden fade-in">
         <div class="bg-slate-950 p-4 border-b border-slate-700 flex justify-between items-center">
           <h3 class="text-lg font-bold text-white">Evaluation Results</h3>
           <span id="totalScoreBadge" class="px-3 py-1 rounded-full bg-blue-900 text-blue-300 font-bold text-sm">Score: --%</span>
@@ -72,7 +95,7 @@
             <h4 class="text-emerald-400 font-semibold mb-1 border-b border-slate-700 pb-1">Vocal P.I.P.A.V. Performance</h4>
             <p id="vocalFeedback" class="text-slate-300"></p>
           </div>
-          <button id="resetBtn" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded transition-colors">
+          <button id="resetBtn" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white py-2 px-4 rounded-lg transition-colors font-semibold">
             Try Scenario Again
           </button>
         </div>
@@ -81,28 +104,51 @@
   </div>
 
   <script>
-    const scenarioVideo = document.getElementById('scenarioVideo');
+    let activeApiKey = '';
+    const loginScreen = document.getElementById('loginScreen');
+    const simScreen = document.getElementById('simScreen');
     const apiKeyInput = document.getElementById('apiKeyInput');
+    const startSimBtn = document.getElementById('startSimBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    const scenarioVideo = document.getElementById('scenarioVideo');
     const micBtn = document.getElementById('micBtn');
     const micText = document.getElementById('micText');
     const submitBtn = document.getElementById('submitBtn');
     const transcriptInput = document.getElementById('transcriptInput');
+    
     const feedbackPanel = document.getElementById('feedbackPanel');
     const clinicalFeedback = document.getElementById('clinicalFeedback');
     const vocalFeedback = document.getElementById('vocalFeedback');
     const totalScoreBadge = document.getElementById('totalScoreBadge');
     const resetBtn = document.getElementById('resetBtn');
 
+    // Login screen logic
+    startSimBtn.addEventListener('click', () => {
+      const key = apiKeyInput.value.trim();
+      if (!key.startsWith('AIza')) {
+        alert('Invalid Key. Google Gemini API keys must start with "AIza".');
+        return;
+      }
+      activeApiKey = key;
+      loginScreen.classList.add('hidden');
+      simScreen.classList.remove('hidden');
+      simScreen.classList.add('fade-in');
+      document.body.classList.remove('items-center');
+      document.body.classList.add('items-start');
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      activeApiKey = '';
+      apiKeyInput.value = '';
+      simScreen.classList.add('hidden');
+      loginScreen.classList.remove('hidden');
+      document.body.classList.add('items-center');
+      document.body.classList.remove('items-start');
+    });
+
     let recognition;
     let isRecording = false;
-
-    // The actual video files matching the branches you named
-    const videos = {
-      prompt: 'alpha-prompt.mp4',
-      branch1: 'branch 1.mp4',
-      branch2: 'branch 2.mp4',
-      branch3: 'branch 3.mp4'
-    };
 
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -124,7 +170,8 @@
         stopRecording();
       };
     } else {
-      console.warn("Speech recognition not supported in this browser.");
+      console.warn("Speech recognition not supported. Manual typing required.");
+      micBtn.style.display = 'none'; // Hide mic button if unsupported
     }
 
     transcriptInput.addEventListener('input', checkInputState);
@@ -150,13 +197,11 @@
         try {
           recognition.start();
           isRecording = true;
-          micText.textContent = 'Stop Recording...';
+          micText.textContent = '⏹ Stop Recording...';
           micBtn.classList.add('recording-pulse');
         } catch(e) {
-          console.error("Recognition already started or failed.", e);
+          console.error("Recognition already started.", e);
         }
-      } else {
-        alert('Microphone not supported in this browser. Please type your response.');
       }
     }
 
@@ -164,63 +209,42 @@
       if (recognition && isRecording) {
         recognition.stop();
         isRecording = false;
-        micText.textContent = 'Press & Speak Response';
+        micText.textContent = '🎤 Press & Speak Response';
         micBtn.classList.remove('recording-pulse');
         checkInputState();
       }
     }
 
     resetBtn.addEventListener('click', () => {
-      scenarioVideo.src = videos.prompt;
+      scenarioVideo.src = 'alpha-prompt.mp4';
       transcriptInput.value = '';
       feedbackPanel.classList.add('hidden');
       submitBtn.disabled = true;
-      scenarioVideo.play();
     });
 
     submitBtn.addEventListener('click', async () => {
-    const text = transcriptText.value.trim();
-    const apiKey = apiKeyInput.value.trim();
+      const text = transcriptInput.value.trim();
 
-    if (!text) {
-      alert('Please speak or type a response first.');
-      return;
-    }
+      if (!text) return;
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Evaluating Response...';
+      feedbackPanel.classList.add('hidden');
 
-    if (!apiKey) {
-      alert('Please enter your Gemini API Key first.');
-      return;
-    }
+      // System prompt adapted for 3 video branches
+      const systemPrompt = `You are an expert assessor in NHS primary care de-escalation and communication. Evaluate the student's spoken response to an angry patient demanding to see a computer screen regarding a missing cancer referral.
+      
+      Evaluate against two core frameworks:
+      Framework 1: Clinical De-escalation (50 Points) - Empathy, refusing to show screen due to GDPR, offering side room.
+      Framework 2: Vocal P.I.P.A.V. Delivery (50 Points) - Based on the transcript text, infer if the tone is calm/professional or abrupt/panicked.
+      
+      Scoring & Branching Rules:
+      * Score 75-100: Branch 3 (De-escalates; patient accepts moving to a private room).
+      * Score 45-74: Branch 2 (Patient stays defensive but complies/grudging).
+      * Score 0-44: Branch 1 (Immediate escalation / walking out).
+      
+      Output Format: Return valid JSON ONLY with keys: "clinical_score", "vocal_score", "total_score", "branch_id", "clinical_feedback", "vocal_feedback".`;
 
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Evaluating Response...';
-
-    const systemPrompt = `You are an expert assessor in NHS primary care de-escalation and communication. Evaluate the student's spoken response to an angry patient demanding to see a computer screen regarding a missing referral.
-    
-    Evaluate against two core frameworks:
-    
-    Framework 1: Clinical De-escalation (50 Points Total)
-    *   Prevention & Assessment: Calm setting, non-confrontational tone.
-    *   Intervention: Clear boundaries set without being dismissive.
-    *   Procedure: Adherence to NHS screen privacy and GDPR rules (refusing screen view firmly).
-    *   Validation: Acknowledging distress and fear regarding the missing scan/cancer concern.
-    
-    Framework 2: Vocal P.I.P.A.V. Delivery (50 Points Total)
-    *   Pitch: Low/neutral pitch projecting composure versus high-pitched panic.
-    *   Inflection: Downward, authoritative inflections vs upward "uptalk".
-    *   Pace: Controlled tempo (~120–140 WPM) vs rushed speech.
-    *   Articulation: Clear enunciation without slurring or hesitation.
-    *   Volume: Moderate, calm lead volume vs shouting back.
-    
-    Scoring & Branching Rules:
-    *   Score 85–100: Branch 3 (De-escalates; patient accepts moving to a private room).
-    *   Score 50–84: Branch 2 (Patient stays defensive but complies or demands immediate proof).
-    *   Score 0–49: Branch 1 (Immediate escalation / walking out).
-    
-    Output Format: Return valid JSON only with keys: "clinical_score", "vocal_score", "total_score", "branch_id", "clinical_feedback", "vocal_feedback".`;
-
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const payload = {
         contents: [{
           parts: [{ text: `${systemPrompt}\n\nStudent Transcript: "${text}"` }]
@@ -230,45 +254,50 @@
         }
       };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`API Error ${response.status}: ${errText}`);
+        }
+
+        const resultData = await response.json();
+        
+        // Parse the JSON string returned inside the text block
+        const rawText = resultData.candidates[0].content.parts[0].text;
+        const result = JSON.parse(rawText);
+
+        // Update UI
+        totalScoreBadge.textContent = `Score: ${result.total_score}%`;
+        clinicalFeedback.textContent = result.clinical_feedback;
+        vocalFeedback.textContent = result.vocal_feedback;
+        
+        feedbackPanel.classList.remove('hidden');
+
+        // Swap video based on branch_id (1, 2, or 3)
+        if (result.branch_id === 3) {
+          scenarioVideo.src = 'branch 3.mp4';
+        } else if (result.branch_id === 2) {
+          scenarioVideo.src = 'branch 2.mp4';
+        } else {
+          scenarioVideo.src = 'branch 1.mp4';
+        }
+        
+        scenarioVideo.play();
+
+      } catch (error) {
+        console.error("Evaluation error:", error);
+        alert("Failed to evaluate. " + error.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Response';
       }
-
-      const resultData = await response.json();
-      const rawText = resultData.candidates[0].content.parts[0].text;
-      const result = JSON.parse(rawText);
-
-      document.getElementById('scoreBadge').textContent = `Total Score: ${result.total_score}%`;
-      document.getElementById('clinicalFeedback').textContent = result.clinical_feedback;
-      document.getElementById('vocalFeedback').textContent = result.vocal_feedback;
-      
-      feedbackPanel.style.display = 'block';
-
-      // Video branching logic based on the AI's branch_id choice
-      if (result.branch_id === 3) {
-        scenarioVideo.src = 'branch 3.mp4';
-      } else if (result.branch_id === 2) {
-        scenarioVideo.src = 'branch 2.mp4';
-      } else {
-        scenarioVideo.src = 'branch 1.mp4';
-      }
-      
-      scenarioVideo.play();
-    } catch (error) {
-      console.error("Evaluation error:", error);
-      alert("There was an error communicating with the AI. Check your API key and try again.");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit & Evaluate';
-    }
-  });
-</script>
-
+    });
+  </script>
 </body>
 </html>
