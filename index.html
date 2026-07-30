@@ -3,358 +3,396 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GP Conflict Simulator Alpha</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <title>NHS Reception Simulator - Alpha</title>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a; /* slate-900 */
-            color: #f8fafc; /* slate-50 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
-        .recording-pulse {
-            animation: pulse-red 1.5s infinite;
-            background-color: #ef4444 !important; /* red-500 */
-            color: white !important;
+
+        .container {
+            background-color: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
         }
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+
+        h1, h2 {
+            color: #60a5fa;
         }
-        /* Custom scrollbar for text area */
-        textarea::-webkit-scrollbar { width: 8px; }
-        textarea::-webkit-scrollbar-track { background: #1e293b; border-radius: 4px; }
-        textarea::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        textarea::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background-color: #334155;
+            color: white;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+        }
+
+        .video-container {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        video {
+            width: 100%;
+            display: block;
+        }
+
+        .text-box {
+            background-color: #334155;
+            padding: 15px;
+            border-radius: 6px;
+            min-height: 80px;
+            margin-bottom: 15px;
+            text-align: left;
+            border: 1px solid #475569;
+        }
+
+        #evaluation-box {
+            background-color: #166534;
+            border-color: #14532d;
+            display: none;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #1e293b;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #475569;
+        }
+
+        .modal-header {
+            color: #ef4444;
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body>
 
-    <div id="errorModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity">
-        <div class="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 class="text-xl font-bold text-red-400 mb-2 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Notice
-            </h3>
-            <p id="errorModalMessage" class="text-slate-300 mb-6 text-sm break-words"></p>
-            <button onclick="closeErrorModal()" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-semibold py-2 px-4 rounded transition-colors">
-                Close
-            </button>
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                ⚠️ Notice
+            </div>
+            <div id="modal-text" class="modal-body">
+                An error occurred.
+            </div>
+            <button onclick="closeModal()" style="width: 100%; background-color: #475569;">Close</button>
         </div>
     </div>
 
-    <div id="loginScreen" class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl transition-all duration-500">
-        <div class="text-center mb-8">
-            <div class="bg-blue-500/20 text-blue-400 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-white mb-2">Alpha Setup</h1>
-            <p class="text-sm text-slate-400">Connect to the Gemini Evaluation Engine</p>
-        </div>
-
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Google Gemini API Key</label>
-                <input type="password" id="apiKeyInput" placeholder="Paste your API Key here (AQ... or AIza...)" 
-                       class="w-full bg-slate-900 text-slate-100 rounded-lg p-3 border border-slate-600 focus:outline-none focus:border-blue-500 font-mono text-sm shadow-inner transition-colors">
-            </div>
-            <button id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:shadow-blue-500/25 transition-all">
-                Unlock Simulator
-            </button>
-            <p class="text-xs text-slate-500 text-center mt-4">
-                Your key is stored securely in your browser's temporary memory and is never saved.
-            </p>
-        </div>
+    <!-- Login Screen -->
+    <div id="login-screen" class="container">
+        <h1>Simulator Alpha</h1>
+        <p>Please enter your API key to access the training environment.</p>
+        <input type="text" id="api-key-input" placeholder="Paste Google Gemini API Key here (starts with AQ.)" autocomplete="off">
+        <br>
+        <button id="unlock-btn">Unlock Simulator</button>
     </div>
 
-    <div id="appScreen" class="w-full max-w-4xl hidden flex-col gap-6 transition-all duration-500 opacity-0">
+    <!-- Audio Setup Screen -->
+    <div id="intro-screen" class="container" style="display: none;">
+        <h2>Before We Begin: Audio Setup</h2>
+        <p>This interactive simulation requires your microphone so you can speak directly to the patient.</p>
         
-        <div class="flex justify-between items-end border-b border-slate-700 pb-4">
-            <div>
-                <h2 class="text-3xl font-bold text-white mb-1">Scenario 1: The Missing Referral</h2>
-                <p class="text-slate-400">Speak directly to the patient using the P.I.P.A.V. de-escalation framework.</p>
-            </div>
-            <div class="text-sm text-slate-500 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></span>
-                API Connected
-            </div>
+        <div style="background-color: #334155; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: left;">
+            <p><strong>Step 1:</strong> Click the button below.</p>
+            <p><strong>Step 2:</strong> Your browser will display a popup near the top of the screen.</p>
+            <p><strong>Step 3:</strong> Click <strong>"Allow"</strong> to grant microphone access.</p>
         </div>
 
-        <div class="bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700 aspect-video relative">
-            <video id="scenarioVideo" class="w-full h-full object-cover" controls>
-                <source src="alpha-prompt.mp4" type="video/mp4">
+        <p id="mic-error" style="color: #ef4444; display: none; font-weight: bold;">
+            Microphone access was denied or not found. Please check your browser settings and try again.
+        </p>
+
+        <button id="test-mic-btn">Test Microphone & Continue</button>
+    </div>
+
+    <!-- Main Simulator Screen -->
+    <div id="simulator-screen" class="container" style="display: none;">
+        <h2>Scenario 1: NHS Reception</h2>
+        <p>Speak directly to the patient to de-escalate the situation.</p>
+        
+        <div class="video-container">
+            <!-- Update the src to your actual starting video file -->
+            <video id="scenario-video" controls>
+                <source src="scenario1_start.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
-            
-            <div id="evaluatingOverlay" class="hidden absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500 mb-4"></div>
-                <h3 class="text-xl font-bold text-white animate-pulse">Evaluating Response...</h3>
-                <p class="text-slate-300 text-sm mt-2 text-center px-4">The AI is analyzing your clinical framework,<br>empathy, and boundary setting.</p>
-            </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button id="micBtn" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all border border-slate-600 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                <span id="micText">Press & Speak Response</span>
-            </button>
-
-            <button id="submitBtn" disabled class="bg-green-700/50 text-green-200/50 cursor-not-allowed font-bold py-4 px-6 rounded-xl transition-all border border-green-800/50 shadow-lg">
-                Submit Response
-            </button>
+        <div>
+            <button id="record-btn" style="background-color: #b91c1c;">🎤 Start Recording</button>
+            <button id="submit-btn" disabled>Evaluate Response</button>
         </div>
 
-        <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-inner">
-            <textarea id="transcriptInput" rows="3" placeholder="Your spoken text will appear here... (Or you can type it manually)." 
-                      class="w-full bg-transparent text-slate-200 p-4 focus:outline-none resize-none"></textarea>
+        <h3 style="text-align: left; margin-top: 20px;">Your Transcript:</h3>
+        <div id="transcript-box" class="text-box">
+            Awaiting input...
         </div>
 
-        <div id="feedbackPanel" class="hidden bg-slate-800 border-l-4 border-blue-500 rounded-r-xl p-6 shadow-lg mb-8">
-            <h3 class="text-xl font-bold mb-4 flex items-center justify-between">
-                Evaluation Results
-                <span id="scoreDisplay" class="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-lg font-mono">Score: --%</span>
-            </h3>
-            <p id="feedbackText" class="text-slate-300 mb-6 leading-relaxed"></p>
-            <button id="resetBtn" class="bg-slate-700 hover:bg-slate-600 text-white py-2 px-6 rounded-lg transition-colors border border-slate-600">
-                Next Scenario / Reset
-            </button>
+        <div id="evaluation-box" class="text-box">
+            <h3>Evaluation Results</h3>
+            <p id="eval-score">Score: </p>
+            <p id="eval-feedback">Feedback: </p>
         </div>
     </div>
 
     <script>
-        let activeApiKey = "";
-        let isRecording = false;
+        // State variables
+        let activeApiKey = '';
+        let currentTranscript = '';
         let recognition;
 
-        const loginScreen = document.getElementById('loginScreen');
-        const appScreen = document.getElementById('appScreen');
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        const loginBtn = document.getElementById('loginBtn');
+        // UI Elements
+        const loginScreen = document.getElementById('login-screen');
+        const introScreen = document.getElementById('intro-screen');
+        const simulatorScreen = document.getElementById('simulator-screen');
+        const errorModal = document.getElementById('error-modal');
+        const modalText = document.getElementById('modal-text');
         
-        const video = document.getElementById('scenarioVideo');
-        const micBtn = document.getElementById('micBtn');
-        const micText = document.getElementById('micText');
-        const submitBtn = document.getElementById('submitBtn');
-        const transcriptInput = document.getElementById('transcriptInput');
-        const evaluatingOverlay = document.getElementById('evaluatingOverlay');
+        const unlockBtn = document.getElementById('unlock-btn');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const testMicBtn = document.getElementById('test-mic-btn');
+        const micError = document.getElementById('mic-error');
         
-        const feedbackPanel = document.getElementById('feedbackPanel');
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const feedbackText = document.getElementById('feedbackText');
-        const resetBtn = document.getElementById('resetBtn');
+        const recordBtn = document.getElementById('record-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const transcriptBox = document.getElementById('transcript-box');
+        const evaluationBox = document.getElementById('evaluation-box');
+        const evalScore = document.getElementById('eval-score');
+        const evalFeedback = document.getElementById('eval-feedback');
+        const scenarioVideo = document.getElementById('scenario-video');
 
-        const errorModal = document.getElementById('errorModal');
-        const errorModalMessage = document.getElementById('errorModalMessage');
-
+        // Modal Function
         function showError(message) {
-            errorModalMessage.textContent = message;
-            errorModal.classList.remove('hidden');
+            modalText.innerText = message;
+            errorModal.style.display = 'flex';
         }
 
-        function closeErrorModal() {
-            errorModal.classList.add('hidden');
+        function closeModal() {
+            errorModal.style.display = 'none';
         }
 
-        loginBtn.addEventListener('click', () => {
+        // Step 1: Login
+        unlockBtn.addEventListener('click', () => {
             const key = apiKeyInput.value.trim();
-            // Removed specific 'AIza' check, just ensuring it's not empty and of reasonable length
-            if (!key || key.length < 15) {
-                showError("Please enter a valid Google Gemini API Key.");
+            if (key.length > 10) {
+                activeApiKey = key;
+                loginScreen.style.display = 'none';
+                introScreen.style.display = 'block';
+            } else {
+                showError("Please enter a valid API key.");
+            }
+        });
+
+        // Step 2: Microphone Test
+        testMicBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                
+                introScreen.style.display = 'none';
+                simulatorScreen.style.display = 'block';
+                setupSpeechRecognition();
+            } catch (err) {
+                micError.style.display = 'block';
+                console.error("Microphone access failed:", err);
+            }
+        });
+
+        // Speech Recognition Setup
+        function setupSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                let isRecording = false;
+
+                recordBtn.addEventListener('click', () => {
+                    if (!isRecording) {
+                        recognition.start();
+                        isRecording = true;
+                        recordBtn.innerText = "⏹️ Stop Recording";
+                        recordBtn.style.backgroundColor = "#475569";
+                        submitBtn.disabled = true;
+                        transcriptBox.innerText = "Listening...";
+                    } else {
+                        recognition.stop();
+                        isRecording = false;
+                        recordBtn.innerText = "🎤 Start Recording";
+                        recordBtn.style.backgroundColor = "#b91c1c";
+                        submitBtn.disabled = false;
+                    }
+                });
+
+                recognition.onresult = (event) => {
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (finalTranscript !== '') {
+                        currentTranscript = finalTranscript;
+                        transcriptBox.innerText = currentTranscript;
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    showError("Speech recognition error: " + event.error);
+                };
+            } else {
+                showError("Your browser does not support Speech Recognition. Please use Chrome or Edge.");
+            }
+        }
+
+        // Step 3: Evaluate via Gemini API
+        submitBtn.addEventListener('click', async () => {
+            if (!currentTranscript) {
+                showError("Please record a response first.");
                 return;
             }
-            
-            activeApiKey = key;
-            
-            loginScreen.style.opacity = '0';
-            setTimeout(() => {
-                loginScreen.classList.add('hidden');
-                appScreen.classList.remove('hidden');
-                void appScreen.offsetWidth; 
-                appScreen.style.opacity = '1';
-            }, 500);
-        });
-
-        transcriptInput.addEventListener('input', () => {
-            if (transcriptInput.value.trim().length > 5) {
-                submitBtn.disabled = false;
-                submitBtn.className = "bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-6 rounded-xl transition-all border border-green-500 shadow-lg hover:shadow-green-500/25";
-            } else {
-                submitBtn.disabled = true;
-                submitBtn.className = "bg-green-700/50 text-green-200/50 cursor-not-allowed font-bold py-4 px-6 rounded-xl transition-all border border-green-800/50 shadow-lg";
-            }
-        });
-
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onresult = (event) => {
-                let currentTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    currentTranscript += event.results[i][0].transcript;
-                }
-                transcriptInput.value = currentTranscript;
-                transcriptInput.dispatchEvent(new Event('input'));
-            };
-
-            recognition.onerror = (event) => {
-                console.error("Speech error", event.error);
-                stopRecording();
-                if(event.error !== 'aborted') {
-                    showError("Microphone error: " + event.error);
-                }
-            };
-        }
-
-        function startRecording() {
-            if (recognition) {
-                try {
-                    transcriptInput.value = "";
-                    recognition.start();
-                    isRecording = true;
-                    micText.textContent = 'Stop Recording...';
-                    micBtn.classList.add('recording-pulse');
-                    micBtn.classList.remove('bg-slate-700', 'hover:bg-slate-600');
-                } catch (e) {
-                    console.error(e);
-                }
-            } else {
-                showError('Microphone not supported in this browser. Please type your response.');
-            }
-        }
-
-        function stopRecording() {
-            if (recognition && isRecording) {
-                recognition.stop();
-                isRecording = false;
-                micText.textContent = 'Press & Speak Response';
-                micBtn.classList.remove('recording-pulse');
-                micBtn.classList.add('bg-slate-700', 'hover:bg-slate-600');
-            }
-        }
-
-        micBtn.addEventListener('click', () => {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
-        });
-
-        submitBtn.addEventListener('click', async () => {
-            const speech = transcriptInput.value.trim();
-            if (!speech) return;
-            
-            if (isRecording) stopRecording();
 
             submitBtn.disabled = true;
-            micBtn.disabled = true;
-            transcriptInput.disabled = true;
-            evaluatingOverlay.classList.remove('hidden');
+            submitBtn.innerText = "Evaluating Response...";
 
-            const systemPrompt = `You are an expert evaluator for NHS reception staff.
-Evaluate the student's response to an aggressive patient demanding to see their screen.
-Score them 0 to 100 based on the P.I.P.A.V. framework (Pace, Inflection, Pitch, Acknowledge, Validate).
-- High score (>80): Empathetic, acknowledges fear, validates feelings, sets boundary politely, offers private room.
-- Medium score (50-79): Sets boundary but lacks empathy or doesn't offer room.
-- Low score (<50): Aggressive, dismissive, defensive, or breaks patient privacy.`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
+            
+            const requestBody = {
+                systemInstruction: {
+                    parts: [{
+                        text: "You are an expert assessor evaluating a receptionist handling an aggressive patient in an NHS environment. Evaluate the user's response based on the P.I.P.A.V. framework (Polite, Investigate, Privacy, Acknowledge, Validate). Focus on acknowledging anxiety, validating frustration, and setting boundaries."
+                    }]
+                },
+                contents: [{
+                    parts: [{
+                        text: `Evaluate this response: "${currentTranscript}"`
+                    }]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            score: { type: "INTEGER", description: "A score from 0 to 100 based on the P.I.P.A.V framework." },
+                            feedback: { type: "STRING", description: "Specific, actionable feedback based on the framework." }
+                        },
+                        required: ["score", "feedback"]
+                    }
+                }
+            };
 
             try {
-                // Using the latest, stable model: gemini-3.5-flash
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
-                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        system_instruction: { parts: [{ text: systemPrompt }] },
-                        contents: [{ parts: [{ text: "Student says: " + speech }] }],
-                        generationConfig: {
-                            temperature: 0.2,
-                            responseMimeType: "application/json",
-                            responseSchema: {
-                                type: "OBJECT",
-                                properties: {
-                                    score: { type: "INTEGER" },
-                                    feedback: { type: "STRING" }
-                                },
-                                required: ["score", "feedback"]
-                            }
-                        }
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(`API Error ${response.status}: ${JSON.stringify(data)}`);
+                    throw new Error(data.error?.message || "Unknown API Error");
                 }
 
-                let rawText = data.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                // Parse the guaranteed JSON output
+                const aiResponseText = data.candidates[0].content.parts[0].text;
+                const result = JSON.parse(aiResponseText);
+
+                // Display Results
+                evaluationBox.style.display = 'block';
+                evalScore.innerText = `Score: ${result.score}%`;
+                evalFeedback.innerText = result.feedback;
+
+                // Branching Video Logic
+                if (result.score >= 80) {
+                    // scenarioVideo.src = "scenario1_good.mp4"; // Uncomment and replace with actual file name
+                    console.log("Loading Good Branch");
+                } else if (result.score >= 40) {
+                    // scenarioVideo.src = "scenario1_acceptable.mp4"; // Uncomment and replace with actual file name
+                    console.log("Loading Acceptable Branch");
+                } else {
+                    // scenarioVideo.src = "scenario1_bad.mp4"; // Uncomment and replace with actual file name
+                    console.log("Loading Bad Branch");
+                }
                 
-                const result = JSON.parse(rawText);
-                handleEvaluation(result);
+                // scenarioVideo.play();
 
             } catch (error) {
-                console.error("Evaluation failed:", error);
-                evaluatingOverlay.classList.add('hidden');
-                
-                showError("Failed to evaluate. " + error.message);
-                
+                showError("Failed to evaluate. API Error: " + error.message);
+            } finally {
+                submitBtn.innerText = "Evaluate Response";
                 submitBtn.disabled = false;
-                micBtn.disabled = false;
-                transcriptInput.disabled = false;
             }
         });
-
-        function handleEvaluation(result) {
-            evaluatingOverlay.classList.add('hidden');
-            
-            const score = result.score;
-            let nextVideo = "";
-
-            if (score >= 80) {
-                nextVideo = "branch 3.mp4"; 
-                scoreDisplay.className = "px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-lg font-mono";
-            } else if (score >= 50) {
-                nextVideo = "branch 2.mp4"; 
-                scoreDisplay.className = "px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-lg font-mono";
-            } else {
-                nextVideo = "branch 1.mp4"; 
-                scoreDisplay.className = "px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-lg font-mono";
-            }
-
-            scoreDisplay.textContent = `Score: ${score}%`;
-            feedbackText.textContent = result.feedback;
-            feedbackPanel.classList.remove('hidden');
-
-            video.src = nextVideo;
-            video.play().catch(e => {
-                console.log("Autoplay prevented, user must click play manually.", e);
-            });
-        }
-
-        resetBtn.addEventListener('click', () => {
-            transcriptInput.value = "";
-            transcriptInput.disabled = false;
-            micBtn.disabled = false;
-            transcriptInput.dispatchEvent(new Event('input')); 
-            
-            feedbackPanel.classList.add('hidden');
-            video.src = "alpha-prompt.mp4";
-            video.load(); 
-        });
-
     </script>
 </body>
 </html>
