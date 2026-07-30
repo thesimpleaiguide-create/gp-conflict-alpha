@@ -74,7 +74,6 @@
 
     <div id="appScreen" class="w-full max-w-4xl hidden flex-col gap-6 transition-all duration-500 opacity-0">
         
-        <!-- Header -->
         <div class="flex justify-between items-end border-b border-slate-700 pb-4">
             <div>
                 <h2 class="text-3xl font-bold text-white mb-1">Scenario 1: The Missing Referral</h2>
@@ -87,13 +86,11 @@
         </div>
 
         <div class="bg-black rounded-xl overflow-hidden shadow-2xl border border-slate-700 aspect-video relative">
-            <!-- Added standard controls so user can press play manually -->
             <video id="scenarioVideo" class="w-full h-full object-cover" controls>
                 <source src="alpha-prompt.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
             
-            <!-- Loading overlay for API call -->
             <div id="evaluatingOverlay" class="hidden absolute inset-0 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
                 <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500 mb-4"></div>
                 <h3 class="text-xl font-bold text-white animate-pulse">Evaluating Response...</h3>
@@ -114,7 +111,6 @@
             </button>
         </div>
 
-        <!-- Transcript Area -->
         <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-inner">
             <textarea id="transcriptInput" rows="3" placeholder="Your spoken text will appear here... (Or you can type it manually)." 
                       class="w-full bg-transparent text-slate-200 p-4 focus:outline-none resize-none"></textarea>
@@ -166,9 +162,9 @@
             errorModal.classList.add('hidden');
         }
 
-        // Login Logic - Accepts both AQ. and AIza. keys
         loginBtn.addEventListener('click', () => {
             const key = apiKeyInput.value.trim();
+            // Removed specific 'AIza' check, just ensuring it's not empty and of reasonable length
             if (!key || key.length < 15) {
                 showError("Please enter a valid Google Gemini API Key.");
                 return;
@@ -180,7 +176,7 @@
             setTimeout(() => {
                 loginScreen.classList.add('hidden');
                 appScreen.classList.remove('hidden');
-                void appScreen.offsetWidth; // Trigger reflow
+                void appScreen.offsetWidth; 
                 appScreen.style.opacity = '1';
             }, 500);
         });
@@ -260,7 +256,6 @@
             
             if (isRecording) stopRecording();
 
-            // Lock UI
             submitBtn.disabled = true;
             micBtn.disabled = true;
             transcriptInput.disabled = true;
@@ -277,8 +272,8 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
 {"score": 85, "feedback": "Your detailed clinical feedback here."}`;
 
             try {
-                // Using the most standard, stable 1.5 flash model endpoint
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeApiKey}`;
+                // Using the latest, stable model: gemini-3.5-flash
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -296,10 +291,9 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(`API Error ${response.status}: ${data.error?.message || 'Unknown error'}`);
+                    throw new Error(`API Error ${response.status}: ${JSON.stringify(data)}`);
                 }
 
-                // Extracting text and aggressively stripping markdown in case Gemini ignores instructions
                 let rawText = data.candidates[0].content.parts[0].text;
                 rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
                 
@@ -310,10 +304,8 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
                 console.error("Evaluation failed:", error);
                 evaluatingOverlay.classList.add('hidden');
                 
-                // Show clean error modal
                 showError("Failed to evaluate. " + error.message);
                 
-                // Unlock UI on failure so they can try again
                 submitBtn.disabled = false;
                 micBtn.disabled = false;
                 transcriptInput.disabled = false;
@@ -326,24 +318,21 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
             const score = result.score;
             let nextVideo = "";
 
-            // Branching Logic based on score
             if (score >= 80) {
-                nextVideo = "branch 3.mp4"; // De-escalation
+                nextVideo = "branch 3.mp4"; 
                 scoreDisplay.className = "px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-lg font-mono";
             } else if (score >= 50) {
-                nextVideo = "branch 2.mp4"; // Grudging Compliance
+                nextVideo = "branch 2.mp4"; 
                 scoreDisplay.className = "px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-lg font-mono";
             } else {
-                nextVideo = "branch 1.mp4"; // Escalation
+                nextVideo = "branch 1.mp4"; 
                 scoreDisplay.className = "px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-lg font-mono";
             }
 
-            // Update UI
             scoreDisplay.textContent = `Score: ${score}%`;
             feedbackText.textContent = result.feedback;
             feedbackPanel.classList.remove('hidden');
 
-            // Play the appropriate branched video
             video.src = nextVideo;
             video.play().catch(e => {
                 console.log("Autoplay prevented, user must click play manually.", e);
@@ -354,11 +343,11 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
             transcriptInput.value = "";
             transcriptInput.disabled = false;
             micBtn.disabled = false;
-            transcriptInput.dispatchEvent(new Event('input')); // Reset submit button
+            transcriptInput.dispatchEvent(new Event('input')); 
             
             feedbackPanel.classList.add('hidden');
             video.src = "alpha-prompt.mp4";
-            video.load(); // Prepare the video
+            video.load(); 
         });
 
     </script>
