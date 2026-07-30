@@ -266,10 +266,7 @@ Evaluate the student's response to an aggressive patient demanding to see their 
 Score them 0 to 100 based on the P.I.P.A.V. framework (Pace, Inflection, Pitch, Acknowledge, Validate).
 - High score (>80): Empathetic, acknowledges fear, validates feelings, sets boundary politely, offers private room.
 - Medium score (50-79): Sets boundary but lacks empathy or doesn't offer room.
-- Low score (<50): Aggressive, dismissive, defensive, or breaks patient privacy.
-
-Respond ONLY in raw JSON format (no markdown, no backticks) with this exact structure:
-{"score": 85, "feedback": "Your detailed clinical feedback here."}`;
+- Low score (<50): Aggressive, dismissive, defensive, or breaks patient privacy.`;
 
             try {
                 // Using the latest, stable model: gemini-3.5-flash
@@ -283,7 +280,15 @@ Respond ONLY in raw JSON format (no markdown, no backticks) with this exact stru
                         contents: [{ parts: [{ text: "Student says: " + speech }] }],
                         generationConfig: {
                             temperature: 0.2,
-                            responseMimeType: "application/json"
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    score: { type: "INTEGER" },
+                                    feedback: { type: "STRING" }
+                                },
+                                required: ["score", "feedback"]
+                            }
                         }
                     })
                 });
